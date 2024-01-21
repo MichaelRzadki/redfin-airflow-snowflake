@@ -65,3 +65,4 @@ This project utilizes Apache Airflow on an EC2 instance to extract and transform
   - Create a visualization dashboard to display the extracted and transformed real estate data.
 
 ## Final Output Dashboard
+<img src="Power Bi Dashboard.png">
