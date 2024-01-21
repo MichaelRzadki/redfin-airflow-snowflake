@@ -1,0 +1,91 @@
+DROP DATABASE IF EXISTS redfin_realestate_database;
+
+CREATE DATABASE redfin_realestate_database;
+
+CREATE SCHEMA redfin_schema;
+// Empty Table
+--TRUNCATE TABLE redfin_realestate_database.redfin_schema.realestate_data;
+
+// Create Table MAY NEED TO ALTER THIS
+CREATE OR REPLACE TABLE redfin_realestate_database.redfin_schema.realestate_data (
+period_begin DATE,
+period_end DATE,
+period_duration INT,
+region_type STRING,
+region_type_id INT,
+table_id INT,
+is_seasonally_adjusted STRING,
+city STRING,
+state STRING,
+state_code STRING,
+property_type STRING,
+property_type_id INT,
+median_sale_price FLOAT,
+median_list_price FLOAT,
+median_ppsf FLOAT,
+median_list_ppsf FLOAT,
+homes_sold FLOAT,
+pending_sales FLOAT,
+new_listings FLOAT,
+inventory FLOAT,
+months_of_supply FLOAT,
+price_drops FLOAT,
+off_market_in_two_weeks FLOAT,
+median_dom FLOAT,
+avg_sale_to_list FLOAT,
+sold_above_list FLOAT,
+parent_metro_region STRING,
+parent_metro_region_metro_code STRING,
+last_updated DATETIME,
+period_begin_in_years STRING,
+period_end_in_years STRING,
+period_begin_in_months STRING,
+period_end_in_months STRING
+);
+
+// Create file format object 
+CREATE SCHEMA file_format_schema;
+CREATE OR REPLACE file format redfin_realestate_database.file_format_schema.format_csv
+    type = 'CSV'
+    field_delimiter = ','
+    RECORD_DELIMITER = '\n'
+    skip_header = 1
+
+// Create staging schema. (Used to point Snowflake to the S3 bucket)
+CREATE SCHEMA external_stage_schema;
+// Create staging
+
+--DROP STAGE redfin_realestate_database.external_stage_schema.redfin_ext_stage_yml;
+
+//Connect to the Transformed S3 bucket
+CREATE OR REPLACE STAGE redfin_realestate_database.external_stage_schema.redfin_ext_stage 
+    url="s3://redfin-transform-area"
+    credentials=(aws_key_id='AKIAV2CU5PHGRQ6NYIWA'
+    aws_secret_key='M/QDxCgyE9nbYfII8ssytmGdxhCa3qG0z+aKWifp')
+    FILE_FORMAT = redfin_realestate_database.file_format_schema.format_csv;
+
+//View the created stage
+list @redfin_realestate_database.external_stage_schema.redfin_ext_stage;
+
+// Create schema for snowpipe
+
+-- DROP SCHEMA redfin_realestate_database.snowpipe_schema;
+
+CREATE OR REPLACE SCHEMA redfin_realestate_database.snowpipe_schema;
+
+// Create Pipe
+CREATE OR REPLACE PIPE redfin_realestate_database.snowpipe_schema.redfin_snowpipe
+auto_ingest = TRUE
+AS 
+COPY INTO redfin_realestate_database.redfin_schema.realestate_data
+FROM @redfin_realestate_database.external_stage_schema.redfin_ext_stage;
+
+DESC PIPE redfin_realestate_database.snowpipe_schema.redfin_snowpipe;
+
+
+//Test the newly create table
+SELECT *
+FROM redfin_realestate_database.redfin_schema.realestate_data LIMIT 10;
+
+SELECT COUNT(*) FROM redfin_realestate_database.redfin_schema.realestate_data
+-- DESC TABLE redfin_realestate_database.redfin_schema.realestate_data;
